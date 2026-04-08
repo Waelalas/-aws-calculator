@@ -88,4 +88,5 @@ def index():
     return render_template_string(HTML_CONTENT, prices=prices, result=result, symbol=symbol)
 
 if __name__ == "__main__":
-    application.run(host="0.0.0.0", port=8000)
+    application.run()
+
