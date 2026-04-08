@@ -1,130 +1,64 @@
 ﻿from flask import Flask, render_template_string, request
+import requests
 
 application = Flask(__name__)
-history = []
 
-# تصميم عصري بألوان متناسقة وتأثيرات زجاجية احترافية
+# دالة لجلب الأسعار الحقيقية من CoinGecko
+def get_crypto_prices():
+    try:
+        url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,binancecoin,ripple,cardano&vs_currencies=usd"
+        response = requests.get(url, timeout=5)
+        return response.json()
+    except:
+        return None
+
 HTML_CONTENT = """
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>حاسبة السحاب الاحترافية</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+    <title>CryptoLive | محول العملات الرقمية</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Cairo', sans-serif;
-            background: #0f172a;
-            background: radial-gradient(circle at top right, #1e1b4b, #0f172a);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            color: white;
-        }
-        .calculator-card {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 2.5rem;
-            border-radius: 30px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            width: 380px;
-            transition: all 0.3s ease;
-        }
-        h2 { text-align: center; margin-bottom: 2rem; color: #818cf8; font-weight: 700; }
-        
-        .input-group { position: relative; margin-bottom: 1.5rem; }
-        
-        input[type="text"] {
-            width: 100%;
-            padding: 1.2rem;
-            background: rgba(15, 23, 42, 0.6);
-            border: 2px solid #334155;
-            border-radius: 15px;
-            color: #f8fafc;
-            font-size: 1.8rem;
-            text-align: center;
-            outline: none;
-            transition: border-color 0.3s;
-            box-sizing: border-box;
-        }
-        input[type="text"]:focus { border-color: #818cf8; box-shadow: 0 0 15px rgba(129, 140, 248, 0.3); }
-
-        button {
-            width: 100%;
-            padding: 1rem;
-            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-            border: none;
-            border-radius: 15px;
-            color: white;
-            font-size: 1.2rem;
-            font-weight: 700;
-            cursor: pointer;
-            box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.4);
-            transition: transform 0.2s, hover 0.3s;
-        }
-        button:hover { background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%); transform: translateY(-2px); }
-        button:active { transform: translateY(0); }
-
-        .result-display {
-            margin-top: 2rem;
-            padding: 1.5rem;
-            background: rgba(16, 185, 129, 0.1);
-            border: 1px dashed #10b981;
-            border-radius: 20px;
-            text-align: center;
-            animation: fadeIn 0.5s ease-out;
-        }
-        .result-value { font-size: 2.5rem; color: #34d399; font-weight: 700; }
-        
-        .history-section {
-            margin-top: 2.5rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            padding-top: 1rem;
-        }
-        .history-title { color: #94a3b8; font-size: 0.9rem; margin-bottom: 10px; display: block; }
-        .history-item {
-            background: rgba(255, 255, 255, 0.03);
-            margin-bottom: 8px;
-            padding: 8px 15px;
-            border-radius: 10px;
-            font-size: 0.85rem;
-            color: #cbd5e1;
-            display: flex;
-            justify-content: space-between;
-        }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        body { font-family: 'IBM Plex Sans Arabic', sans-serif; background: #050505; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: linear-gradient(145deg, #111, #1a1a1a); padding: 2.5rem; border-radius: 30px; border: 1px solid #333; width: 400px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+        h2 { text-align: center; color: #f3ba2f; margin-bottom: 2rem; }
+        .price-badge { background: #222; padding: 10px; border-radius: 12px; margin-bottom: 20px; text-align: center; border: 1px solid #444; }
+        .btc-price { color: #f3ba2f; font-weight: bold; font-size: 1.2rem; }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px; border: 1px solid #444; background: #000; color: white; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: #f3ba2f; border: none; border-radius: 10px; color: black; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
+        button:hover { background: #ffca42; transform: translateY(-2px); }
+        .result { margin-top: 20px; padding: 15px; background: rgba(243, 186, 47, 0.1); border-radius: 10px; text-align: center; border: 1px solid #f3ba2f; }
     </style>
 </head>
 <body>
-    <div class="calculator-card">
-        <h2>حاسبة السحاب 💎</h2>
+    <div class="card">
+        <h2>CryptoLive ₿</h2>
+        
+        <div class="price-badge">
+            سعر البيتكوين الآن: <span class="btc-price">${{ btc_usd }}</span>
+        </div>
+
         <form method="POST">
-            <div class="input-group">
-                <input type="text" name="expression" placeholder="0" autocomplete="off" required>
-            </div>
-            <button type="submit">احسب النتيجة</button>
+            <label>المبلغ (USD):</label>
+            <input type="number" step="any" name="amount" placeholder="أدخل المبلغ بالدولار" required>
+            
+            <label>حول إلى:</label>
+            <select name="crypto">
+                <option value="bitcoin">Bitcoin (BTC)</option>
+                <option value="ethereum">Ethereum (ETH)</option>
+                <option value="binancecoin">BNB</option>
+                <option value="ripple">Ripple (XRP)</option>
+            </select>
+            
+            <button type="submit">تحويل الآن</button>
         </form>
 
-        {% if result is not none %}
-        <div class="result-display">
-            <span style="color: #94a3b8; font-size: 0.9rem;">النتيجة النهائية</span>
-            <div class="result-value">{{ result }}</div>
-        </div>
-        {% endif %}
-
-        {% if history %}
-        <div class="history-section">
-            <span class="history-title">آخر العمليات:</span>
-            {% for item in history %}
-            <div class="history-item">
-                <span>{{ item.split('=')[0] }}</span>
-                <span style="color: #818cf8;">= {{ item.split('=')[1] }}</span>
-            </div>
-            {% endfor %}
+        {% if result %}
+        <div class="result">
+            <div>تحصل على تقريباً:</div>
+            <div style="font-size: 1.8rem; color: #f3ba2f; font-weight: bold;">{{ result }} {{ symbol }}</div>
         </div>
         {% endif %}
     </div>
@@ -134,17 +68,21 @@ HTML_CONTENT = """
 
 @application.route("/", methods=["GET", "POST"])
 def index():
+    prices = get_crypto_prices()
+    btc_usd = prices['bitcoin']['usd'] if prices else "جاري التحميل..."
+    
     result = None
-    if request.method == "POST":
-        try:
-            expr = request.form.get("expression")
-            # حماية بسيطة وتنفيذ العملية
-            result = eval(expr, {"__builtins__": None}, {})
-            history.insert(0, f"{expr} = {result}")
-            if len(history) > 4: history.pop()
-        except:
-            result = "خطأ!"
-    return render_template_string(HTML_CONTENT, result=result, history=history)
+    symbol = ""
+    
+    if request.method == "POST" and prices:
+        amount = float(request.form.get("amount", 0))
+        crypto = request.form.get("crypto")
+        crypto_price = prices[crypto]['usd']
+        
+        result = round(amount / crypto_price, 6)
+        symbol = crypto.upper()
+
+    return render_template_string(HTML_CONTENT, btc_usd=btc_usd, result=result, symbol=symbol)
 
 if __name__ == "__main__":
     application.run(host="0.0.0.0", port=8000)
